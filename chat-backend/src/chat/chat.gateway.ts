@@ -1,5 +1,4 @@
-﻿
-import { randomUUID } from 'node:crypto';
+﻿import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
@@ -12,6 +11,7 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 import { ChatDatabaseService } from './chat-database.service.js';
+import type { StoredMessage } from './chat-database.service.js';
 
 interface EventAck {
   success: boolean;
@@ -112,7 +112,7 @@ export class ChatGateway
       };
     }
 
-    const message = {
+    const message: StoredMessage = {
       id: randomUUID(),
       roomId,
       senderId: client.id,
@@ -121,9 +121,10 @@ export class ChatGateway
     };
 
     try {
-      // Persist the message before broadcasting it.
+      // Resolves only after the message is committed to PostgreSQL.
       await this.database.saveMessage(message);
 
+      // Broadcast and ack only after the commit.
       this.server.to(roomId).emit('newMessage', message);
 
       return { success: true, messageId: message.id };

@@ -45,7 +45,7 @@ async function bootstrap(): Promise<void> {
       throw new Error(`Invalid PORT: ${process.env.PORT}`);
     }
 
-    await app.listen(port);
+    await app.listen(port, '0.0.0.0');
 
     console.log(`Chat backend listening on port ${port}`);
 

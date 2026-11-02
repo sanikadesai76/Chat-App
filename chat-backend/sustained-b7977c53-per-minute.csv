@@ -1,0 +1,3 @@
+minute,acked,failed,msgs_per_sec,ack_p50_ms,ack_p95_ms,ack_p99_ms,recipient_p50_ms,recipient_p95_ms,recipient_p99_ms
+1,16778,0,279.6,6.0,42.6,185.8,6.4,45.0,197.1
+2,17018,0,283.6,5.5,17.9,42.2,5.9,19.1,43.7

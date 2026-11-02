@@ -51,12 +51,16 @@ export class ChatGateway
   constructor(private readonly database: ChatDatabaseService) {}
 
   handleConnection(client: Socket): void {
-    this.logger.log(`Client connected: ${client.id}`);
+    this.logger.log(
+  `Client connected: ${client.id} | Instance: ${process.env.HOSTNAME}`,
+);
   }
 
   handleDisconnect(client: Socket): void {
-    this.logger.log(`Client disconnected: ${client.id}`);
-  }
+  this.logger.log(
+    `Client connected: ${client.id} | Instance: ${process.env.HOSTNAME}`,
+  );
+}
 
   @SubscribeMessage('joinRoom')
   async handleJoinRoom(

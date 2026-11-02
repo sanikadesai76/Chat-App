@@ -1,3 +1,4 @@
+
 import {
   beforeEach,
   describe,
@@ -7,12 +8,20 @@ import {
 } from 'vitest';
 import type { Server, Socket } from 'socket.io';
 import { ChatGateway } from './chat.gateway.js';
+import type { ChatDatabaseService } from './chat-database.service.js';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
+  let saveMessage: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    gateway = new ChatGateway();
+    saveMessage = vi.fn().mockResolvedValue(undefined);
+
+    const database = { saveMessage };
+
+    gateway = new ChatGateway(
+      database as unknown as ChatDatabaseService,
+    );
   });
 
   it('should be defined', () => {
@@ -64,13 +73,13 @@ describe('ChatGateway', () => {
     expect(client.join).toHaveBeenCalledWith('room-1');
   });
 
-  it('rejects messages from clients outside the room', () => {
+  it('rejects messages from clients outside the room', async () => {
     const client = {
       id: 'client-1',
       rooms: new Set(['client-1']),
     } as unknown as Socket;
 
-    const result = gateway.handleSendMessage(
+    const result = await gateway.handleSendMessage(
       client,
       {
         roomId: 'room-1',
@@ -82,26 +91,33 @@ describe('ChatGateway', () => {
       success: false,
       error: 'Join the room before sending messages',
     });
+
+    expect(saveMessage).not.toHaveBeenCalled();
   });
 
-  it('rejects malformed message payloads', () => {
+  it('rejects malformed message payloads', async () => {
     const client = {
       id: 'client-1',
       rooms: new Set(['client-1', 'room-1']),
     } as unknown as Socket;
 
-    expect(
-      gateway.handleSendMessage(client, {
+    const result = await gateway.handleSendMessage(
+      client,
+      {
         roomId: 'room-1',
         text: 42,
-      }),
-    ).toEqual({
+      },
+    );
+
+    expect(result).toEqual({
       success: false,
       error: 'Invalid message payload',
     });
+
+    expect(saveMessage).not.toHaveBeenCalled();
   });
 
-  it('broadcasts a valid message and returns its ID', () => {
+  it('persists and broadcasts a valid message and returns its ID', async () => {
     const emit = vi.fn();
     const to = vi.fn().mockReturnValue({ emit });
 
@@ -112,7 +128,7 @@ describe('ChatGateway', () => {
       rooms: new Set(['client-1', 'room-1']),
     } as unknown as Socket;
 
-    const result = gateway.handleSendMessage(
+    const result = await gateway.handleSendMessage(
       client,
       {
         roomId: 'room-1',
@@ -122,6 +138,15 @@ describe('ChatGateway', () => {
 
     expect(result.success).toBe(true);
     expect(result.messageId).toBeTruthy();
+
+    expect(saveMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: result.messageId,
+        roomId: 'room-1',
+        senderId: 'client-1',
+        text: 'hello',
+      }),
+    );
 
     expect(to).toHaveBeenCalledWith('room-1');
 

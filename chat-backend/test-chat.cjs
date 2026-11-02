@@ -1,7 +1,7 @@
 
 const { io } = require('socket.io-client');
 
-const URL = 'http://localhost:3000';
+const URL = 'http://localhost:8080';
 const ROOM_ID = 'test-room';
 const TEST_MESSAGE = 'Hello from Client A';
 

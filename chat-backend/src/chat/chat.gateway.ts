@@ -1,4 +1,4 @@
-﻿import { randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
@@ -51,17 +51,20 @@ export class ChatGateway
   constructor(private readonly database: ChatDatabaseService) {}
 
   handleConnection(client: Socket): void {
-    this.logger.log(
-  `Client connected: ${client.id} | Instance: ${process.env.HOSTNAME}`,
-);
+    this.logger.log(`CONNECTED: ${client.id}`);
+
+    client.on('disconnect', (reason) => {
+      this.logger.warn(
+        `DISCONNECTED: ${client.id} | Reason: ${reason}`,
+      );
+    });
   }
 
   handleDisconnect(client: Socket): void {
-  this.logger.log(
-    `Client connected: ${client.id} | Instance: ${process.env.HOSTNAME}`,
-  );
-}
-
+    this.logger.log(
+      `Client disconnected: ${client.id} | Instance: ${process.env.HOSTNAME}`,
+    );
+  }
   @SubscribeMessage('joinRoom')
   async handleJoinRoom(
     @ConnectedSocket() client: Socket,

@@ -184,14 +184,12 @@ export class ChatDatabaseService
       }
     }
 
-    // Isolate invalid messages instead of failing the whole batch.
+    // Isolate invalid messages without creating unbounded parallel writes.
     if (batch.length > 1 && isDataError(lastError)) {
       const mid = Math.ceil(batch.length / 2);
 
-      await Promise.all([
-        this.writeBatch(batch.slice(0, mid)),
-        this.writeBatch(batch.slice(mid)),
-      ]);
+      await this.writeBatch(batch.slice(0, mid));
+      await this.writeBatch(batch.slice(mid));
 
       return;
     }
@@ -213,6 +211,12 @@ export class ChatDatabaseService
     messages: StoredMessage[],
   ): Promise<void> {
     const dbStart = performance.now();
+
+    // Capture pool state before this query starts.
+    const poolSnapshot = {
+      total: this.pool.totalCount,
+      idle: this.pool.idleCount,
+    };
 
     try {
       await this.pool.query(
@@ -248,6 +252,15 @@ export class ChatDatabaseService
 
       if (dbMs > 100) {
         chatStats.slowInserts++;
+      }
+
+      // Report pool pressure when queries are waiting for connections.
+      const waiting = this.pool.waitingCount;
+
+      if (waiting > 0) {
+        this.logger.warn(
+          `PG_POOL_WAIT total=${poolSnapshot.total} idle=${poolSnapshot.idle} waiting=${waiting} dbMs=${dbMs.toFixed(1)}`,
+        );
       }
     }
   }
